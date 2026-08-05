@@ -18,6 +18,16 @@ Running `just` without arguments opens an [fzf](https://github.com/junegunn/fzf)
 
 If you prefer not to install `just`, the underlying commands are plain `go build`, `go test`, and `go run` invocations you can run directly.
 
+## Nix flake with direnv support
+
+If you have [Nix](https://nixos.org) and [direnv](https://direnv.net/) installed, the repository includes a flake that provides a dev shell with Go, Terraform, and `just` pinned and ready to use.
+
+```sh
+direnv allow   
+```
+
+From that point on, entering the directory automatically activates the environment. No manual `nix develop` or tool installation required.
+
 ## Submitting changes
 
 Keep pull requests focused on a single change. Describe what the change does and why in the PR description. All commits must be signed.
