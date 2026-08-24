@@ -21,8 +21,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install just
+          sudo apt-get update
+          sudo apt-get install -y just
 
       - name: Run check
         run: just check
@@ -39,14 +39,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install just
-
-      - name: Generate docs
-        run: just docs
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
