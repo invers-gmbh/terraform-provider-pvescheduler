@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -34,7 +36,7 @@ func (r *PlacementResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *PlacementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Remove from state to force re-scheduling.",
+		Description: "Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
@@ -52,15 +54,24 @@ func (r *PlacementResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"exclude": schema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
-				Description: "Node names to exclude from placement.",
+				Description: "Node names to exclude from placement. Changing this forces a new placement.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
+				},
 			},
 			"memory_weight": schema.Float64Attribute{
 				Optional:    true,
-				Description: "Weight applied to memory utilization when scoring nodes (default 0.7).",
+				Description: "Weight applied to memory utilization when scoring nodes (default 0.7). Changing this forces a new placement.",
+				PlanModifiers: []planmodifier.Float64{
+					float64planmodifier.RequiresReplace(),
+				},
 			},
 			"cpu_weight": schema.Float64Attribute{
 				Optional:    true,
-				Description: "Weight applied to CPU utilization when scoring nodes (default 0.3).",
+				Description: "Weight applied to CPU utilization when scoring nodes (default 0.3). Changing this forces a new placement.",
+				PlanModifiers: []planmodifier.Float64{
+					float64planmodifier.RequiresReplace(),
+				},
 			},
 			"memory_usage_pct": schema.NumberAttribute{
 				Computed:    true,
@@ -135,21 +146,11 @@ func (r *PlacementResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update preserves node_name and usage stats from state; only config inputs may change.
-func (r *PlacementResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state PlacementResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	plan.ID = state.ID
-	plan.NodeName = state.NodeName
-	plan.MemUsagePct = state.MemUsagePct
-	plan.CpuUsagePct = state.CpuUsagePct
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+func (r *PlacementResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
+	resp.Diagnostics.AddError(
+		"placement cannot be updated in place",
+		"Every configurable attribute of pvescheduler_placement requires replacement, so this code path should be unreachable. Please report this as a provider bug.",
+	)
 }
 
 func (r *PlacementResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {

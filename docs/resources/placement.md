@@ -3,12 +3,12 @@
 page_title: "pvescheduler_placement Resource - pvescheduler"
 subcategory: ""
 description: |-
-  Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Remove from state to force re-scheduling.
+  Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing exclude, memory_weight or cpu_weight replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
 ---
 
 # pvescheduler_placement (Resource)
 
-Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Remove from state to force re-scheduling.
+Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
 
 ## Example Usage
 
@@ -50,9 +50,9 @@ output "chosen_node_cpu_pct" {
 
 ### Optional
 
-- `cpu_weight` (Number) Weight applied to CPU utilization when scoring nodes (default 0.3).
-- `exclude` (List of String) Node names to exclude from placement.
-- `memory_weight` (Number) Weight applied to memory utilization when scoring nodes (default 0.7).
+- `cpu_weight` (Number) Weight applied to CPU utilization when scoring nodes (default 0.3). Changing this forces a new placement.
+- `exclude` (List of String) Node names to exclude from placement. Changing this forces a new placement.
+- `memory_weight` (Number) Weight applied to memory utilization when scoring nodes (default 0.7). Changing this forces a new placement.
 
 ### Read-Only
 
