@@ -90,7 +90,7 @@ func (p *PveSchedulerProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	insecure := config.InsecureSkipVerify.ValueBool()
-	if !insecure {
+	if config.InsecureSkipVerify.IsNull() {
 		insecure = os.Getenv("PROXMOX_VE_INSECURE") == "true"
 	}
 

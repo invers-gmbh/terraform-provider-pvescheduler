@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestAddAuth_Token(t *testing.T) {
@@ -100,6 +101,65 @@ func TestNewClientWithPassword_Success(t *testing.T) {
 	}
 	if c.csrfToken != "csrf-tok" {
 		t.Errorf("unexpected CSRF token: %q", c.csrfToken)
+	}
+}
+
+func TestNewClientWithToken_SetsTimeout(t *testing.T) {
+	c := NewClientWithToken("http://example.com", "tok", false, nil)
+	if c.http == nil {
+		t.Fatal("expected an HTTP client")
+	}
+	if c.http.Timeout != requestTimeout {
+		t.Errorf("expected timeout %v, got %v", requestTimeout, c.http.Timeout)
+	}
+}
+
+func TestGetNodes_ReusesClient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": []PveNode{}})
+	}))
+	defer srv.Close()
+
+	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	first := c.http
+	if _, err := c.GetNodes(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.GetNodes(); err != nil {
+		t.Fatal(err)
+	}
+	if c.http != first {
+		t.Error("expected the same HTTP client across calls")
+	}
+}
+
+func TestGetNodes_TimesOut(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+	}))
+	defer srv.Close()
+
+	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	c.http.Timeout = 20 * time.Millisecond
+	if _, err := c.GetNodes(); err == nil {
+		t.Fatal("expected a timeout error")
+	}
+}
+
+func TestNewClientWithPassword_SetsTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{"ticket": "t", "CSRFPreventionToken": "c"},
+		})
+	}))
+	defer srv.Close()
+
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.http == nil || c.http.Timeout != requestTimeout {
+		t.Error("expected a client with a timeout")
 	}
 }
 

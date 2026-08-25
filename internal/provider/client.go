@@ -7,16 +7,29 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+const requestTimeout = 30 * time.Second
 
 type PveClient struct {
 	Endpoint           string
 	InsecureSkipVerify bool
 	Nodes              []string
 
+	http      *http.Client
 	apiToken  string
 	ticket    string
 	csrfToken string
+}
+
+func newHTTPClient(insecure bool) *http.Client {
+	return &http.Client{
+		Timeout: requestTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+		},
+	}
 }
 
 type PveNode struct {
@@ -34,6 +47,7 @@ func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string
 		Nodes:              nodes,
 		apiToken:           apiToken,
 		InsecureSkipVerify: insecure,
+		http:               newHTTPClient(insecure),
 	}
 }
 
@@ -49,11 +63,7 @@ func NewClientWithPassword(endpoint, username, password string, insecure bool, n
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
-		},
-	}
+	httpClient := newHTTPClient(insecure)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -80,6 +90,7 @@ func NewClientWithPassword(endpoint, username, password string, insecure bool, n
 		Endpoint:           endpoint,
 		InsecureSkipVerify: insecure,
 		Nodes:              nodes,
+		http:               httpClient,
 		ticket:             result.Data.Ticket,
 		csrfToken:          result.Data.CSRFPreventionToken,
 	}, nil
@@ -102,12 +113,7 @@ func (c *PveClient) GetNodes() ([]PveNode, error) {
 	}
 	c.addAuth(req)
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.InsecureSkipVerify},
-		},
-	}
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
