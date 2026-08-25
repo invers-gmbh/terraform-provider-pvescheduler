@@ -2,8 +2,10 @@ package provider
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -160,6 +162,139 @@ func TestNewClientWithPassword_SetsTimeout(t *testing.T) {
 	}
 	if c.http == nil || c.http.Timeout != requestTimeout {
 		t.Error("expected a client with a timeout")
+	}
+}
+
+func TestGetNodes_ReauthenticatesOnExpiredTicket(t *testing.T) {
+	issued := 0
+	nodeCalls := 0
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/access/ticket", func(w http.ResponseWriter, r *http.Request) {
+		issued++
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{
+				"ticket":              fmt.Sprintf("ticket-%d", issued),
+				"CSRFPreventionToken": fmt.Sprintf("csrf-%d", issued),
+			},
+		})
+	})
+	mux.HandleFunc("/api2/json/nodes", func(w http.ResponseWriter, r *http.Request) {
+		nodeCalls++
+		cookie, err := r.Cookie("PVEAuthCookie")
+		if err != nil || cookie.Value != "ticket-2" {
+			http.Error(w, "ticket expired", http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []PveNode{{Node: "pve01", Status: "online", Mem: 1e9, MaxMem: 8e9}},
+		})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ticket != "ticket-1" {
+		t.Fatalf("expected initial ticket-1, got %q", c.ticket)
+	}
+
+	nodes, err := c.GetNodes()
+	if err != nil {
+		t.Fatalf("expected re-authentication to recover, got %v", err)
+	}
+	if len(nodes) != 1 {
+		t.Errorf("expected 1 node, got %d", len(nodes))
+	}
+	if c.ticket != "ticket-2" {
+		t.Errorf("expected refreshed ticket-2, got %q", c.ticket)
+	}
+	if c.csrfToken != "csrf-2" {
+		t.Errorf("expected refreshed csrf-2, got %q", c.csrfToken)
+	}
+	if issued != 2 {
+		t.Errorf("expected 2 tickets issued, got %d", issued)
+	}
+	if nodeCalls != 2 {
+		t.Errorf("expected 2 node calls, got %d", nodeCalls)
+	}
+}
+
+func TestGetNodes_TokenAuthDoesNotRetry(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	if _, err := c.GetNodes(); err == nil {
+		t.Fatal("expected error for 401 response")
+	}
+	if calls != 1 {
+		t.Errorf("token auth should not retry, got %d calls", calls)
+	}
+}
+
+func TestGetNodes_RetriesOnlyOnce(t *testing.T) {
+	nodeCalls := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/access/ticket", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{"ticket": "t", "CSRFPreventionToken": "c"},
+		})
+	})
+	mux.HandleFunc("/api2/json/nodes", func(w http.ResponseWriter, r *http.Request) {
+		nodeCalls++
+		http.Error(w, "still unauthorized", http.StatusUnauthorized)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.GetNodes(); err == nil {
+		t.Fatal("expected error when re-authentication does not help")
+	}
+	if nodeCalls != 2 {
+		t.Errorf("expected exactly 2 node calls, got %d", nodeCalls)
+	}
+}
+
+func TestGetNodes_ReauthFailurePropagates(t *testing.T) {
+	tickets := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/access/ticket", func(w http.ResponseWriter, r *http.Request) {
+		tickets++
+		if tickets > 1 {
+			http.Error(w, "credentials revoked", http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{"ticket": "t", "CSRFPreventionToken": "c"},
+		})
+	})
+	mux.HandleFunc("/api2/json/nodes", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "ticket expired", http.StatusUnauthorized)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = c.GetNodes()
+	if err == nil {
+		t.Fatal("expected error when re-authentication fails")
+	}
+	if !strings.Contains(err.Error(), "re-authentication failed") {
+		t.Errorf("expected re-authentication error, got %v", err)
 	}
 }
 
