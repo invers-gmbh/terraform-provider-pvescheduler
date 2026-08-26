@@ -16,7 +16,7 @@ vuln:
 check: lint vuln test
 
 docs:
-    go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest generate --provider-name pvescheduler
+    go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name pvescheduler
 
 docs-check: docs
     #!/usr/bin/env bash
