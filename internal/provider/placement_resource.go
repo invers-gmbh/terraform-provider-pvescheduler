@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+var _ resource.ResourceWithImportState = &PlacementResource{}
 
 type PlacementResource struct{ client *PveClient }
 
@@ -151,6 +154,53 @@ func (r *PlacementResource) Update(_ context.Context, _ resource.UpdateRequest, 
 		"placement cannot be updated in place",
 		"Every configurable attribute of pvescheduler_placement requires replacement, so this code path should be unreachable. Please report this as a provider bug.",
 	)
+}
+
+func (r *PlacementResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	nodeName := strings.TrimSpace(req.ID)
+	if nodeName == "" {
+		resp.Diagnostics.AddError(
+			"invalid import ID",
+			"Expected a PVE node name, for example: terraform import pvescheduler_placement.vm pve01",
+		)
+		return
+	}
+
+	pveNodes, err := r.client.GetNodes()
+	if err != nil {
+		resp.Diagnostics.AddError("failed to fetch PVE nodes", err.Error())
+		return
+	}
+
+	var found *PveNode
+	for i := range pveNodes {
+		if pveNodes[i].Node == nodeName {
+			found = &pveNodes[i]
+			break
+		}
+	}
+	if found == nil {
+		resp.Diagnostics.AddError(
+			"node not found",
+			fmt.Sprintf("no PVE node named %q is reachable through this provider", nodeName),
+		)
+		return
+	}
+
+	state := PlacementResourceModel{
+		ID:          types.StringValue(found.Node),
+		NodeName:    types.StringValue(found.Node),
+		Exclude:     types.ListNull(types.StringType),
+		MemWeight:   types.Float64Null(),
+		CpuWeight:   types.Float64Null(),
+		MemUsagePct: types.NumberNull(),
+		CpuUsagePct: types.NumberValue(bigFloat(found.Cpu * 100)),
+	}
+	if found.MaxMem > 0 {
+		state.MemUsagePct = types.NumberValue(bigFloat((found.Mem / found.MaxMem) * 100))
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *PlacementResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {

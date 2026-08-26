@@ -60,3 +60,14 @@ output "chosen_node_cpu_pct" {
 - `id` (String) The ID of this resource.
 - `memory_usage_pct` (Number) Memory utilization of the selected node at time of placement.
 - `node_name` (String) The selected Proxmox node name, locked in state after initial placement.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# The import ID is the PVE node name to pin this placement to.
+terraform import pvescheduler_placement.vm pve01
+```
