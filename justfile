@@ -7,6 +7,9 @@ build:
 test:
     go test ./... -v
 
+testacc:
+    TF_ACC=1 go test ./... -v -timeout 20m
+
 lint:
     go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
 

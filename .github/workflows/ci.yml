@@ -39,6 +39,9 @@ jobs:
       - name: Lint, vulnerabilities and tests
         run: just check
 
+      - name: Acceptance tests
+        run: just testacc
+
       - name: Check generated docs are up to date
         run: just docs-check
 
