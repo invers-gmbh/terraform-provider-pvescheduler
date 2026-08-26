@@ -35,9 +35,9 @@ func testAccStubPVE(t *testing.T) string {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"data": []PveNode{
-				{Node: "pve01", Status: "online", Mem: 96, MaxMem: 128, Cpu: 0.75, MaxCpu: 8},
-				{Node: "pve02", Status: "online", Mem: 32, MaxMem: 128, Cpu: 0.25, MaxCpu: 8},
-				{Node: "pve03", Status: "online", Mem: 64, MaxMem: 128, Cpu: 0.50, MaxCpu: 8},
+				{Node: "pve01", Status: "online", Mem: 96, MaxMem: 128, Cpu: 0.75},
+				{Node: "pve02", Status: "online", Mem: 32, MaxMem: 128, Cpu: 0.25},
+				{Node: "pve03", Status: "online", Mem: 64, MaxMem: 128, Cpu: 0.50},
 			},
 		})
 	}))

@@ -40,7 +40,6 @@ type PveNode struct {
 	Mem    float64 `json:"mem"`
 	MaxMem float64 `json:"maxmem"`
 	Cpu    float64 `json:"cpu"`
-	MaxCpu float64 `json:"maxcpu"`
 }
 
 func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string) *PveClient {
