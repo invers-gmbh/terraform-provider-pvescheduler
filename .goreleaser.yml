@@ -19,15 +19,17 @@ builds:
       - linux
       - darwin
       - windows
+      - freebsd
     goarch:
       - amd64
       - arm64
+      - arm
+      - "386"
     ignore:
       - goos: windows
         goarch: arm64
-
 archives:
-  - format: zip
+  - formats: ["zip"]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
