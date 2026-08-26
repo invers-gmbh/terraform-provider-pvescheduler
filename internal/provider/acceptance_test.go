@@ -19,8 +19,9 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 }
 
 var (
-	regexpUnsupportedArgument = regexp.MustCompile(`Unsupported argument`)
-	regexpNodeNotFound        = regexp.MustCompile(`node not found`)
+	regexpUnsupportedArgument   = regexp.MustCompile(`Unsupported argument`)
+	regexpNodeNotFound          = regexp.MustCompile(`node not found`)
+	regexpInvalidAttributeValue = regexp.MustCompile(`Invalid Attribute Value`)
 )
 
 // Utilisation values are chosen to be exactly representable in binary so the
@@ -71,6 +72,63 @@ resource "pvescheduler_placement" "vm" {}
 					resource.TestCheckResourceAttr("pvescheduler_placement.vm", "memory_usage_pct", "25"),
 					resource.TestCheckResourceAttr("pvescheduler_placement.vm", "cpu_usage_pct", "25"),
 				),
+			},
+		},
+	})
+}
+
+// The weights carry schema defaults, so they must appear in state as concrete
+// values rather than null when the configuration omits them.
+func TestAccPlacement_WeightDefaultsAppearInState(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement" "vm" {}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("pvescheduler_placement.vm", "memory_weight", "0.7"),
+					resource.TestCheckResourceAttr("pvescheduler_placement.vm", "cpu_weight", "0.3"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccPlacement_RejectsNegativeWeight(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement" "vm" {
+  memory_weight = -1
+}
+`,
+				ExpectError: regexpInvalidAttributeValue,
+			},
+		},
+	})
+}
+
+func TestAccNodeDataSource_RejectsNegativeWeight(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+data "pvescheduler_node" "best" {
+  cpu_weight = -0.5
+}
+`,
+				ExpectError: regexpInvalidAttributeValue,
 			},
 		},
 	})

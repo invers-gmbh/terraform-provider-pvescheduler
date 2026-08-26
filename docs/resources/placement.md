@@ -56,9 +56,9 @@ output "chosen_node_cpu_pct" {
 
 ### Read-Only
 
-- `cpu_usage_pct` (Number) CPU utilization of the selected node at time of placement.
+- `cpu_usage_pct` (Number) CPU utilization of the selected node at time of placement, as a percentage (0-100).
 - `id` (String) The ID of this resource.
-- `memory_usage_pct` (Number) Memory utilization of the selected node at time of placement.
+- `memory_usage_pct` (Number) Memory utilization of the selected node at time of placement, as a percentage (0-100).
 - `node_name` (String) The selected Proxmox node name, locked in state after initial placement.
 
 ## Import

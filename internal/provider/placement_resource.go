@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -25,8 +27,8 @@ type PlacementResourceModel struct {
 	Exclude     types.List    `tfsdk:"exclude"`
 	MemWeight   types.Float64 `tfsdk:"memory_weight"`
 	CpuWeight   types.Float64 `tfsdk:"cpu_weight"`
-	MemUsagePct types.Number  `tfsdk:"memory_usage_pct"`
-	CpuUsagePct types.Number  `tfsdk:"cpu_usage_pct"`
+	MemUsagePct types.Float64 `tfsdk:"memory_usage_pct"`
+	CpuUsagePct types.Float64 `tfsdk:"cpu_usage_pct"`
 }
 
 func NewPlacementResource() resource.Resource {
@@ -64,30 +66,40 @@ func (r *PlacementResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			},
 			"memory_weight": schema.Float64Attribute{
 				Optional:    true,
+				Computed:    true,
+				Default:     float64default.StaticFloat64(defaultMemWeight),
 				Description: "Weight applied to memory utilization when scoring nodes (default 0.7). Changing this forces a new placement.",
+				Validators: []validator.Float64{
+					float64validator.AtLeast(0),
+				},
 				PlanModifiers: []planmodifier.Float64{
 					float64planmodifier.RequiresReplace(),
 				},
 			},
 			"cpu_weight": schema.Float64Attribute{
 				Optional:    true,
+				Computed:    true,
+				Default:     float64default.StaticFloat64(defaultCpuWeight),
 				Description: "Weight applied to CPU utilization when scoring nodes (default 0.3). Changing this forces a new placement.",
+				Validators: []validator.Float64{
+					float64validator.AtLeast(0),
+				},
 				PlanModifiers: []planmodifier.Float64{
 					float64planmodifier.RequiresReplace(),
 				},
 			},
-			"memory_usage_pct": schema.NumberAttribute{
+			"memory_usage_pct": schema.Float64Attribute{
 				Computed:    true,
-				Description: "Memory utilization of the selected node at time of placement.",
-				PlanModifiers: []planmodifier.Number{
-					numberplanmodifier.UseStateForUnknown(),
+				Description: "Memory utilization of the selected node at time of placement, as a percentage (0-100).",
+				PlanModifiers: []planmodifier.Float64{
+					float64planmodifier.UseStateForUnknown(),
 				},
 			},
-			"cpu_usage_pct": schema.NumberAttribute{
+			"cpu_usage_pct": schema.Float64Attribute{
 				Computed:    true,
-				Description: "CPU utilization of the selected node at time of placement.",
-				PlanModifiers: []planmodifier.Number{
-					numberplanmodifier.UseStateForUnknown(),
+				Description: "CPU utilization of the selected node at time of placement, as a percentage (0-100).",
+				PlanModifiers: []planmodifier.Float64{
+					float64planmodifier.UseStateForUnknown(),
 				},
 			},
 		},
@@ -135,8 +147,8 @@ func (r *PlacementResource) Create(ctx context.Context, req resource.CreateReque
 
 	plan.ID = types.StringValue(best.Node)
 	plan.NodeName = types.StringValue(best.Node)
-	plan.MemUsagePct = types.NumberValue(bigFloat((best.Mem / best.MaxMem) * 100))
-	plan.CpuUsagePct = types.NumberValue(bigFloat(best.Cpu * 100))
+	plan.MemUsagePct = types.Float64Value((best.Mem / best.MaxMem) * 100)
+	plan.CpuUsagePct = types.Float64Value(best.Cpu * 100)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -191,13 +203,13 @@ func (r *PlacementResource) ImportState(ctx context.Context, req resource.Import
 		ID:          types.StringValue(found.Node),
 		NodeName:    types.StringValue(found.Node),
 		Exclude:     types.ListNull(types.StringType),
-		MemWeight:   types.Float64Null(),
-		CpuWeight:   types.Float64Null(),
-		MemUsagePct: types.NumberNull(),
-		CpuUsagePct: types.NumberValue(bigFloat(found.Cpu * 100)),
+		MemWeight:   types.Float64Value(defaultMemWeight),
+		CpuWeight:   types.Float64Value(defaultCpuWeight),
+		MemUsagePct: types.Float64Null(),
+		CpuUsagePct: types.Float64Value(found.Cpu * 100),
 	}
 	if found.MaxMem > 0 {
-		state.MemUsagePct = types.NumberValue(bigFloat((found.Mem / found.MaxMem) * 100))
+		state.MemUsagePct = types.Float64Value((found.Mem / found.MaxMem) * 100)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
