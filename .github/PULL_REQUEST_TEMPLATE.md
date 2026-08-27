@@ -10,7 +10,8 @@ Closes #
 - [ ] `just testacc` passes (acceptance tests)
 - [ ] Schema changes are reflected in committed docs (`just docs`)
 - [ ] Examples still validate (`just validate-examples`)
-- [ ] Commits are signed
+- [ ] Every commit is signed off (`git commit -s`) — `just dco` passes
+- [ ] Commits are cryptographically signed
 - [ ] This pull request has a label, so it lands in the right section of the release notes
 
 <!--
