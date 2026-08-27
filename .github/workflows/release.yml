@@ -26,6 +26,10 @@ jobs:
 
       - name: Run check
         run: just check
+      - name: Run docs-check
+        run: just docs-check
+      - name: Run testac
+        run: just testacc
 
   release:
     needs: [check]
