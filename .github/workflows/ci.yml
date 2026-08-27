@@ -47,3 +47,42 @@ jobs:
 
       - name: Validate examples
         run: just validate-examples
+
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      # Only the commits this event introduces are checked. Pass a wider range
+      # (for example trunk's root commit) to gate the whole history instead.
+      - name: Determine commit range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range="$(git merge-base "$PR_BASE" "$PR_HEAD")..$PR_HEAD"
+          elif git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            range="$PUSH_BEFORE..$PUSH_AFTER"
+          else
+            # Force-push or new branch: the previous tip is unavailable, so check
+            # the pushed commit on its own.
+            range="$PUSH_AFTER^!"
+          fi
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+
+      - name: Check DCO sign-off
+        env:
+          RANGE: ${{ steps.range.outputs.range }}
+        run: just dco "$RANGE"

@@ -51,3 +51,28 @@ validate-examples:
     for d in examples/provider examples/resources/* examples/data-sources/*; do
       terraform -chdir="$d" validate
     done
+
+# Verify every commit in RANGE carries a Signed-off-by trailer for its author (DCO).
+dco range="trunk..HEAD":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    range="{{ range }}"
+    fail=0
+    for sha in $(git rev-list --no-merges "$range"); do
+      name="$(git show -s --format='%an' "$sha")"
+      email="$(git show -s --format='%ae' "$sha")"
+      signoffs="$(git show -s --format='%(trailers:key=Signed-off-by,valueonly)' "$sha")"
+      if grep -qiF "<$email>" <<<"$signoffs"; then
+        continue
+      fi
+      printf '%s %s\n' "$(git rev-parse --short "$sha")" "$(git show -s --format='%s' "$sha")" >&2
+      printf '    missing: Signed-off-by: %s <%s>\n' "$name" "$email" >&2
+      fail=1
+    done
+    if [ "$fail" -ne 0 ]; then
+      echo >&2
+      echo "Every commit needs a Developer Certificate of Origin sign-off." >&2
+      echo "Sign new commits with 'git commit -s'." >&2
+      exit 1
+    fi
+    echo "DCO: every commit in $range carries a matching Signed-off-by trailer"
