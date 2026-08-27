@@ -1,3 +1,5 @@
 terraform-provider-pvescheduler
 .direnv/
 dist/
+.terraform/
+*.tfstate*
