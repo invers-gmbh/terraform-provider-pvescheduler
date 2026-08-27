@@ -22,13 +22,14 @@ var (
 	regexpUnsupportedArgument   = regexp.MustCompile(`Unsupported argument`)
 	regexpNodeNotFound          = regexp.MustCompile(`node not found`)
 	regexpInvalidAttributeValue = regexp.MustCompile(`Invalid Attribute Value`)
+	// Wrapped across lines by Terraform's diagnostic renderer, so match one word.
+	regexpCertificate = regexp.MustCompile(`certificate`)
 )
 
 // Utilisation values are chosen to be exactly representable in binary so the
 // generated percentages are stable strings: 0.25, 0.5 and 0.75.
-func testAccStubPVE(t *testing.T) string {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func testAccPVEHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api2/json/nodes" {
 			http.NotFound(w, r)
 			return
@@ -40,7 +41,21 @@ func testAccStubPVE(t *testing.T) string {
 				{Node: "pve03", Status: "online", Mem: 64, MaxMem: 128, Cpu: 0.50},
 			},
 		})
-	}))
+	})
+}
+
+func testAccStubPVE(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(testAccPVEHandler())
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+// Served with a self-signed certificate, so a client that verifies fails and a
+// client that skips verification succeeds.
+func testAccStubPVETLS(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewTLSServer(testAccPVEHandler())
 	t.Cleanup(srv.Close)
 	return srv.URL
 }
@@ -308,6 +323,60 @@ data "pvescheduler_node" "best" {
 }
 `,
 				ExpectError: regexpUnsupportedArgument,
+			},
+		},
+	})
+}
+
+// PROXMOX_VE_INSECURE must not override a value the practitioner set. Before the
+// fix, ValueBool() returned false for both "unset" and "explicitly false", so an
+// explicit false was silently downgraded and TLS verification was disabled.
+func TestAccProvider_ExplicitTLSVerificationBeatsEnvironment(t *testing.T) {
+	endpoint := testAccStubPVETLS(t)
+	t.Setenv("PROXMOX_VE_INSECURE", "true")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, `insecure_skip_verify = false`) + `
+data "pvescheduler_node" "best" {}
+`,
+				ExpectError: regexpCertificate,
+			},
+		},
+	})
+}
+
+func TestAccProvider_ExplicitInsecureSkipsVerification(t *testing.T) {
+	endpoint := testAccStubPVETLS(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, `insecure_skip_verify = true`) + `
+data "pvescheduler_node" "best" {}
+`,
+				Check: resource.TestCheckResourceAttr("data.pvescheduler_node.best", "node_name", "pve02"),
+			},
+		},
+	})
+}
+
+// The environment is still consulted when the argument is absent.
+func TestAccProvider_EnvironmentEnablesInsecureWhenUnset(t *testing.T) {
+	endpoint := testAccStubPVETLS(t)
+	t.Setenv("PROXMOX_VE_INSECURE", "true")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+data "pvescheduler_node" "best" {}
+`,
+				Check: resource.TestCheckResourceAttr("data.pvescheduler_node.best", "node_name", "pve02"),
 			},
 		},
 	})
