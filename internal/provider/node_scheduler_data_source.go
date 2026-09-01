@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -13,8 +15,8 @@ type NodeSchedulerDataSource struct{ client *PveClient }
 
 type NodeSchedulerModel struct {
 	NodeName    types.String  `tfsdk:"node_name"`
-	MemUsagePct types.Number  `tfsdk:"memory_usage_pct"`
-	CpuUsagePct types.Number  `tfsdk:"cpu_usage_pct"`
+	MemUsagePct types.Float64 `tfsdk:"memory_usage_pct"`
+	CpuUsagePct types.Float64 `tfsdk:"cpu_usage_pct"`
 	Exclude     types.List    `tfsdk:"exclude"`
 	MemWeight   types.Float64 `tfsdk:"memory_weight"`
 	CpuWeight   types.Float64 `tfsdk:"cpu_weight"`
@@ -36,11 +38,11 @@ func (d *NodeSchedulerDataSource) Schema(_ context.Context, _ datasource.SchemaR
 				Computed:    true,
 				Description: "The name of the selected Proxmox node.",
 			},
-			"memory_usage_pct": schema.NumberAttribute{
+			"memory_usage_pct": schema.Float64Attribute{
 				Computed:    true,
 				Description: "Memory utilization of the selected node as a percentage (0-100).",
 			},
-			"cpu_usage_pct": schema.NumberAttribute{
+			"cpu_usage_pct": schema.Float64Attribute{
 				Computed:    true,
 				Description: "CPU utilization of the selected node as a percentage (0-100).",
 			},
@@ -52,10 +54,16 @@ func (d *NodeSchedulerDataSource) Schema(_ context.Context, _ datasource.SchemaR
 			"memory_weight": schema.Float64Attribute{
 				Optional:    true,
 				Description: "Weight applied to memory utilization when scoring nodes (default 0.7).",
+				Validators: []validator.Float64{
+					float64validator.AtLeast(0),
+				},
 			},
 			"cpu_weight": schema.Float64Attribute{
 				Optional:    true,
 				Description: "Weight applied to CPU utilization when scoring nodes (default 0.3).",
+				Validators: []validator.Float64{
+					float64validator.AtLeast(0),
+				},
 			},
 		},
 	}
@@ -101,8 +109,8 @@ func (d *NodeSchedulerDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 
 	state.NodeName = types.StringValue(best.Node)
-	state.MemUsagePct = types.NumberValue(bigFloat((best.Mem / best.MaxMem) * 100))
-	state.CpuUsagePct = types.NumberValue(bigFloat(best.Cpu * 100))
+	state.MemUsagePct = types.Float64Value((best.Mem / best.MaxMem) * 100)
+	state.CpuUsagePct = types.Float64Value(best.Cpu * 100)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

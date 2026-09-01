@@ -7,16 +7,31 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+const requestTimeout = 30 * time.Second
 
 type PveClient struct {
 	Endpoint           string
 	InsecureSkipVerify bool
 	Nodes              []string
 
+	http      *http.Client
 	apiToken  string
+	username  string
+	password  string
 	ticket    string
 	csrfToken string
+}
+
+func newHTTPClient(insecure bool) *http.Client {
+	return &http.Client{
+		Timeout: requestTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+		},
+	}
 }
 
 type PveNode struct {
@@ -25,7 +40,6 @@ type PveNode struct {
 	Mem    float64 `json:"mem"`
 	MaxMem float64 `json:"maxmem"`
 	Cpu    float64 `json:"cpu"`
-	MaxCpu float64 `json:"maxcpu"`
 }
 
 func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string) *PveClient {
@@ -34,35 +48,46 @@ func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string
 		Nodes:              nodes,
 		apiToken:           apiToken,
 		InsecureSkipVerify: insecure,
+		http:               newHTTPClient(insecure),
 	}
 }
 
 func NewClientWithPassword(endpoint, username, password string, insecure bool, nodes []string) (*PveClient, error) {
-	endpoint_url := fmt.Sprintf("%s/api2/json/access/ticket", endpoint)
+	c := &PveClient{
+		Endpoint:           endpoint,
+		InsecureSkipVerify: insecure,
+		Nodes:              nodes,
+		http:               newHTTPClient(insecure),
+		username:           username,
+		password:           password,
+	}
+
+	if err := c.authenticate(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (c *PveClient) authenticate() error {
+	endpointURL := fmt.Sprintf("%s/api2/json/access/ticket", c.Endpoint)
 
 	body := url.Values{}
-	body.Set("username", username)
-	body.Set("password", password)
-	req, err := http.NewRequest("POST", endpoint_url, strings.NewReader(body.Encode()))
+	body.Set("username", c.username)
+	body.Set("password", c.password)
+	req, err := http.NewRequest("POST", endpointURL, strings.NewReader(body.Encode()))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
-		},
-	}
-
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("PVE API returned status %d", resp.StatusCode)
+		return fmt.Errorf("PVE API returned status %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -73,16 +98,16 @@ func NewClientWithPassword(endpoint, username, password string, insecure bool, n
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+		return err
 	}
 
-	return &PveClient{
-		Endpoint:           endpoint,
-		InsecureSkipVerify: insecure,
-		Nodes:              nodes,
-		ticket:             result.Data.Ticket,
-		csrfToken:          result.Data.CSRFPreventionToken,
-	}, nil
+	c.ticket = result.Data.Ticket
+	c.csrfToken = result.Data.CSRFPreventionToken
+	return nil
+}
+
+func (c *PveClient) canReauthenticate() bool {
+	return c.apiToken == "" && c.username != "" && c.password != ""
 }
 
 func (c *PveClient) addAuth(req *http.Request) {
@@ -94,22 +119,31 @@ func (c *PveClient) addAuth(req *http.Request) {
 	}
 }
 
-func (c *PveClient) GetNodes() ([]PveNode, error) {
+func (c *PveClient) getNodesOnce() (*http.Response, error) {
 	url := fmt.Sprintf("%s/api2/json/nodes", c.Endpoint)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	c.addAuth(req)
+	return c.http.Do(req)
+}
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.InsecureSkipVerify},
-		},
-	}
-	resp, err := httpClient.Do(req)
+func (c *PveClient) GetNodes() ([]PveNode, error) {
+	resp, err := c.getNodesOnce()
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized && c.canReauthenticate() {
+		_ = resp.Body.Close()
+		if err := c.authenticate(); err != nil {
+			return nil, fmt.Errorf("PVE ticket expired and re-authentication failed: %w", err)
+		}
+		resp, err = c.getNodesOnce()
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer func() { _ = resp.Body.Close() }()
 

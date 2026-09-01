@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a problem with the provider
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report.
+
+        Please do not report security vulnerabilities here. See our
+        [security policy](../security/policy) for how to disclose those privately.
+
+  - type: input
+    id: provider_version
+    attributes:
+      label: Provider version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: terraform_version
+    attributes:
+      label: Terraform version
+      description: Output of `terraform version`.
+      placeholder: "1.14.3"
+    validations:
+      required: true
+
+  - type: input
+    id: pve_version
+    attributes:
+      label: Proxmox VE version
+      placeholder: "9.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal reproducible configuration
+      description: The smallest configuration that shows the problem. Remove any credentials.
+      render: hcl
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: Include plan or apply output where relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Optional. Output with `TF_LOG=DEBUG` is often useful.
+        Remove API tokens, passwords and hostnames before pasting.
+      render: text
+    validations:
+      required: false

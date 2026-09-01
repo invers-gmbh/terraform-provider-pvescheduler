@@ -48,7 +48,7 @@ func (p *PveSchedulerProvider) Schema(_ context.Context, _ provider.SchemaReques
 			"password": schema.StringAttribute{
 				Optional:    true,
 				Sensitive:   true,
-				Description: "PVE API password. Used with `username`. Falls back to PROXMOX_VE_PASSWORD",
+				Description: "PVE API password. Used with `username`. Falls back to PROXMOX_VE_PASSWORD.",
 			},
 			"insecure_skip_verify": schema.BoolAttribute{
 				Optional:    true,
@@ -57,7 +57,7 @@ func (p *PveSchedulerProvider) Schema(_ context.Context, _ provider.SchemaReques
 			"nodes": schema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
-				Description: "Global allowlist of PVE node names eligible for scheduling. If ommitted, all online nodes are considered.",
+				Description: "Global allowlist of PVE node names eligible for scheduling. If omitted, all online nodes are considered.",
 			},
 		},
 	}
@@ -90,7 +90,7 @@ func (p *PveSchedulerProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	insecure := config.InsecureSkipVerify.ValueBool()
-	if !insecure {
+	if config.InsecureSkipVerify.IsNull() {
 		insecure = os.Getenv("PROXMOX_VE_INSECURE") == "true"
 	}
 
