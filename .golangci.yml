@@ -1,0 +1,23 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - gosec
+    - misspell
+  exclusions:
+    rules:
+      # G402: insecure_skip_verify is a documented provider argument. The value
+      # comes from practitioner configuration, it is not hardcoded to true.
+      - path: internal/provider/client\.go
+        linters:
+          - gosec
+        text: G402
+      # G124: Secure, HttpOnly and SameSite are Set-Cookie response attributes.
+      # PVEAuthCookie is attached to an outgoing request, where they are not
+      # transmitted and have no meaning.
+      - path: internal/provider/client\.go
+        linters:
+          - gosec
+        text: G124

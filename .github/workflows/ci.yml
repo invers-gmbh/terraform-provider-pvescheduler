@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - trunk
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Build
+        run: just build
+
+      - name: Lint, vulnerabilities and tests
+        run: just check
+
+      - name: Acceptance tests
+        run: just testacc
+
+      - name: Check generated docs are up to date
+        run: just docs-check
+
+      - name: Validate examples
+        run: just validate-examples
+
+  release-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Catches build targets Go does not support and archive layouts the
+      # Terraform Registry rejects, both of which otherwise only surface when a
+      # tag is already pushed. Unpinned on purpose: release.yml resolves
+      # goreleaser the same way, so this exercises the version that will build
+      # the release.
+      - name: Dry-run the release build
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --snapshot --clean --skip=sign
+
+      - name: Check archive layout matches the Registry spec
+        run: |
+          zip="$(ls dist/*_linux_amd64.zip)"
+          unzip -l "$zip"
+          unzip -l "$zip" | grep -qE 'terraform-provider-pvescheduler_v[0-9]' || {
+            echo "::error::archive must contain terraform-provider-pvescheduler_v{VERSION}"
+            exit 1
+          }
+
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      # Only the commits this event introduces are checked. Pass a wider range
+      # (for example trunk's root commit) to gate the whole history instead.
+      - name: Determine commit range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range="$(git merge-base "$PR_BASE" "$PR_HEAD")..$PR_HEAD"
+          elif git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            range="$PUSH_BEFORE..$PUSH_AFTER"
+          else
+            # Force-push or new branch: the previous tip is unavailable, so check
+            # the pushed commit on its own.
+            range="$PUSH_AFTER^!"
+          fi
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+
+      - name: Check DCO sign-off
+        env:
+          RANGE: ${{ steps.range.outputs.range }}
+        run: just dco "$RANGE"
