@@ -25,6 +25,10 @@ builds:
       - arm64
       - arm
       - "386"
+    ignore:
+      - goos: windows
+        goarch: arm64
+
 archives:
   - formats: ["zip"]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
