@@ -66,7 +66,7 @@ jobs:
       # goreleaser the same way, so this exercises the version that will build
       # the release.
       - name: Dry-run the release build
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           args: release --snapshot --clean --skip=sign
 
