@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -22,6 +24,78 @@ func TestToSet_Items(t *testing.T) {
 	}
 	if len(s) != 3 {
 		t.Errorf("expected 3 items, got %d", len(s))
+	}
+}
+
+func TestBuildAllowlist_EmptyZoneString(t *testing.T) {
+	nodes := []string{"a", "b", "c"}
+	zones := map[string][]string{
+		"foo": {"a"},
+		"bar": {"b"},
+		"baz": {"c"},
+	}
+	zone := ""
+	allowlist, err := buildAllowlist(nodes, zones, zone)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := slices.Sorted(maps.Keys(allowlist))
+	if !slices.Equal(got, nodes) {
+		t.Errorf("expected %v, got %v", nodes, got)
+	}
+}
+
+func TestBuildAllowlist_EmptyTopology(t *testing.T) {
+	nodes := []string{"a", "b", "c"}
+	zones := map[string][]string{}
+	zone := "foo"
+
+	_, err := buildAllowlist(nodes, zones, zone)
+
+	if err == nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildAllowlist_ExplicitValues(t *testing.T) {
+	nodes := []string{"a", "b", "c"}
+	zones := map[string][]string{
+		"foo": {"a"},
+		"bar": {"b"},
+		"baz": {"c"},
+	}
+	zone := "foo"
+
+	allowlist, err := buildAllowlist(nodes, zones, zone)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !slices.Contains(slices.Sorted(maps.Keys(allowlist)), "a") {
+		t.Errorf("Expecet \"a\" to be in allowlist, got: %v", allowlist)
+	}
+
+	if len(allowlist) != 1 {
+		t.Errorf("Expected allowlist of one, got: %d", len(allowlist))
+	}
+}
+
+func TestBuildAllowlist_NoEligibleNodes(t *testing.T) {
+	nodes := []string{"a", "b", "c"}
+	zones := map[string][]string{
+		"foo": {"d"},
+		"bar": {"b"},
+		"baz": {"c"},
+	}
+	zone := "foo"
+
+	allowlist, err := buildAllowlist(nodes, zones, zone)
+
+	if err == nil {
+		t.Fatalf("expected error, got allowlist: %v", allowlist)
 	}
 }
 
