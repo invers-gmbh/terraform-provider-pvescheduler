@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
@@ -141,18 +140,10 @@ func (r *PlacementDynamicResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	var allowlist map[string]bool
-	if !plan.Zone.IsNull() {
-		zoneServers := r.client.Topology[plan.Zone.String()]
-
-		allowlist = make(map[string]bool, len(pveNodes))
-
-		for _, v := range pveNodes {
-			allowlist[v.Node] = slices.Contains(zoneServers, v.Node)
-		}
-
-	} else {
-		allowlist = toSet(r.client.Nodes)
+	allowlist, err := buildAllowlist(r.client.Nodes, r.client.Topology, plan.Zone.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("failed to build node allowlist", err.Error())
+		return
 	}
 
 	exclude := buildExcludeSet(ctx, plan.Exclude, &resp.Diagnostics)

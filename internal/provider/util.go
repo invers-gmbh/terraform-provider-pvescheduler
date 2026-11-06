@@ -2,6 +2,10 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -30,6 +34,37 @@ func toSet(items []string) map[string]bool {
 		s[v] = true
 	}
 	return s
+}
+
+func buildAllowlist(nodes []string, topology map[string][]string, zone string) (map[string]bool, error) {
+	if zone == "" {
+		return toSet(nodes), nil
+	}
+
+	if len(topology) == 0 {
+		return nil, fmt.Errorf("zone %q set but provider has no topology configured", zone)
+	}
+
+	members, ok := topology[zone]
+
+	if !ok {
+		known := slices.Sorted(maps.Keys(topology))
+		return nil, fmt.Errorf("unknown zone %q, known zones: %s", zone, strings.Join(known, ", "))
+	}
+	global := toSet(nodes)
+	allowlist := map[string]bool{}
+
+	for _, n := range members {
+		if len(global) == 0 || global[n] {
+			allowlist[n] = true
+		}
+	}
+
+	if len(allowlist) == 0 {
+		return nil, fmt.Errorf("zone %q has no eligible nodes", zone)
+	}
+
+	return allowlist, nil
 }
 
 func resolveWeights(memWeight, cpuWeight types.Float64) (float64, float64) {
