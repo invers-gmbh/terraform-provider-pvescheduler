@@ -27,7 +27,7 @@ If you prefer not to install `just`, the underlying commands are plain `go build
 
 To test changes that are under development in a local environment use the [Prepare Terraform for local provider install](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install)
 
-´´´yaml
+´´´hcl
 provider_installation {
 
   dev_overrides {
