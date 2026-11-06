@@ -3,8 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
 	"slices"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -38,7 +38,7 @@ func NewPlacementDynamicResource() resource.Resource {
 }
 
 func (r *PlacementDynamicResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_placement"
+	resp.TypeName = req.ProviderTypeName + "_placement_dynamic"
 }
 
 func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -105,7 +105,8 @@ func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRe
 				},
 			},
 			"zone": schema.StringAttribute{
-				Computed:    true,
+				Optional:    true,
+				Computed:    false,
 				Description: "The selected availability zone to place the virtual machine. Zones need to be defined in topology of provider configuration. Selected node is locked in state after initial placement.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -144,10 +145,10 @@ func (r *PlacementDynamicResource) Create(ctx context.Context, req resource.Crea
 	if !plan.Zone.IsNull() {
 		zoneServers := r.client.Topology[plan.Zone.String()]
 
-		allowlist = make(map[string]bool,len(pveNodes))
+		allowlist = make(map[string]bool, len(pveNodes))
 
 		for _, v := range pveNodes {
-			allowlist[v.Node] = slices.Contains(zoneServers,v.Node)
+			allowlist[v.Node] = slices.Contains(zoneServers, v.Node)
 		}
 
 	} else {
