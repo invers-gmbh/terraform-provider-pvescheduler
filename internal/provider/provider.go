@@ -130,10 +130,10 @@ func (p *PveSchedulerProvider) Configure(ctx context.Context, req provider.Confi
 	var client *PveClient
 	switch {
 	case apiToken != "":
-		client = NewClientWithToken(endpoint, apiToken, insecure, nodes)
+		client = NewClientWithToken(endpoint, apiToken, insecure, nodes, topology)
 	case username != "" && password != "":
 		var err error
-		client, err = NewClientWithPassword(endpoint, username, password, insecure, nodes)
+		client, err = NewClientWithPassword(endpoint, username, password, insecure, nodes, topology)
 		if err != nil {
 			resp.Diagnostics.AddError("authentication failed", err.Error())
 			return
