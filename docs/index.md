@@ -36,4 +36,5 @@ provider "pvescheduler" {
 - `insecure_skip_verify` (Boolean) Skip TLS certificate verification. Falls back to PROXMOX_VE_INSECURE=true.
 - `nodes` (List of String) Global allowlist of PVE node names eligible for scheduling. If omitted, all online nodes are considered.
 - `password` (String, Sensitive) PVE API password. Used with `username`. Falls back to PROXMOX_VE_PASSWORD.
+- `topology` (Map of List of String) Tolopogy information to use for placing virtual machines in a hosting environment.
 - `username` (String) PVE API username in the form user@realm. Falls back to PROXMOX_VE_USERNAME.
