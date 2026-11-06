@@ -156,6 +156,7 @@ func (p *PveSchedulerProvider) DataSources(_ context.Context) []func() datasourc
 
 func (p *PveSchedulerProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewPlacementResource,
 		NewPlacementResourceFixed,
 		NewPlacementDynamicResource,
 	}
