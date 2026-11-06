@@ -23,6 +23,23 @@ Running `just` without arguments opens an [fzf](https://github.com/junegunn/fzf)
 
 If you prefer not to install `just`, the underlying commands are plain `go build`, `go test`, and `go run` invocations you can run directly.
 
+## Local Testing
+
+To test changes that are under development in a local environment use the [Prepare Terraform for local provider install](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install)
+
+´´´yaml
+provider_installation {
+
+  dev_overrides {
+      "invers-gmbh/pvescheduler" = "<path to binary>"
+  }
+
+  # For all other providers, install them directly from their origin provider
+  # registries as normal. If you omit this, Terraform will _only_ use
+  # the dev_overrides block, and so no other providers will be available.
+  direct {}
+}
+´´´
 ## Nix flake with direnv support
 
 If you have [Nix](https://nixos.org) and [direnv](https://direnv.net/) installed, the repository includes a flake that provides a dev shell with Go, Terraform, and `just` pinned and ready to use.
