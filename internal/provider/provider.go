@@ -20,6 +20,7 @@ type PveSchedulerProviderModel struct {
 	Password           types.String `tfsdk:"password"`
 	InsecureSkipVerify types.Bool   `tfsdk:"insecure_skip_verify"`
 	Nodes              types.List   `tfsdk:"nodes"`
+	Topology           types.Map    `tfsdk:"topology"`
 }
 
 func New() provider.Provider { return &PveSchedulerProvider{} }
@@ -58,6 +59,22 @@ func (p *PveSchedulerProvider) Schema(_ context.Context, _ provider.SchemaReques
 				Optional:    true,
 				ElementType: types.StringType,
 				Description: "Global allowlist of PVE node names eligible for scheduling. If omitted, all online nodes are considered.",
+			},
+
+			// - EU-WEST-PAR-A
+			//    - "hosts-a"
+			//    - "hosts -b"
+			//  - EU-WEST-PAR-B
+			//    - "hosts-c"
+			// - EU-WEST-PAR-C
+			//    - "host-d
+
+			"topology": schema.MapAttribute{
+				Optional: true,
+				ElementType: types.ListType{
+					ElemType: types.StringType,
+				},
+				Description: "Tolopogy information to use for placing virtual machines in a hosting environment.",
 			},
 		},
 	}
@@ -102,6 +119,12 @@ func (p *PveSchedulerProvider) Configure(ctx context.Context, req provider.Confi
 	var nodes []string
 	if !config.Nodes.IsNull() && !config.Nodes.IsUnknown() {
 		resp.Diagnostics.Append(config.Nodes.ElementsAs(ctx, &nodes, false)...)
+	}
+
+	var topology map[string][]string = nil
+
+	if !config.Topology.IsNull() {
+		resp.Diagnostics.Append(config.Topology.ElementsAs(ctx, &topology, false)...)
 	}
 
 	var client *PveClient
