@@ -53,7 +53,7 @@ func TestGetNodes_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	c := NewClientWithToken(srv.URL, "tok", false, nil, nil)
 	nodes, err := c.GetNodes()
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestGetNodes_NonOKStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClientWithToken(srv.URL, "bad-token", false, nil)
+	c := NewClientWithToken(srv.URL, "bad-token", false, nil, nil)
 	_, err := c.GetNodes()
 	if err == nil {
 		t.Fatal("expected error for non-200 response")
@@ -94,7 +94,7 @@ func TestNewClientWithPassword_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestNewClientWithPassword_Success(t *testing.T) {
 }
 
 func TestNewClientWithToken_SetsTimeout(t *testing.T) {
-	c := NewClientWithToken("http://example.com", "tok", false, nil)
+	c := NewClientWithToken("http://example.com", "tok", false, nil, nil)
 	if c.http == nil {
 		t.Fatal("expected an HTTP client")
 	}
@@ -122,7 +122,7 @@ func TestGetNodes_ReusesClient(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	c := NewClientWithToken(srv.URL, "tok", false, nil, nil)
 	first := c.http
 	if _, err := c.GetNodes(); err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestGetNodes_TimesOut(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	c := NewClientWithToken(srv.URL, "tok", false, nil, nil)
 	c.http.Timeout = 20 * time.Millisecond
 	if _, err := c.GetNodes(); err == nil {
 		t.Fatal("expected a timeout error")
@@ -156,7 +156,7 @@ func TestNewClientWithPassword_SetsTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestGetNodes_ReauthenticatesOnExpiredTicket(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestGetNodes_TokenAuthDoesNotRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClientWithToken(srv.URL, "tok", false, nil)
+	c := NewClientWithToken(srv.URL, "tok", false, nil, nil)
 	if _, err := c.GetNodes(); err == nil {
 		t.Fatal("expected error for 401 response")
 	}
@@ -254,7 +254,7 @@ func TestGetNodes_RetriesOnlyOnce(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +285,7 @@ func TestGetNodes_ReauthFailurePropagates(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil)
+	c, err := NewClientWithPassword(srv.URL, "user@pam", "pass", false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +304,7 @@ func TestNewClientWithPassword_AuthFailure(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := NewClientWithPassword(srv.URL, "user@pam", "wrong", false, nil)
+	_, err := NewClientWithPassword(srv.URL, "user@pam", "wrong", false, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for 401 response")
 	}
