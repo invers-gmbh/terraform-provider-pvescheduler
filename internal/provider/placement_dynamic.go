@@ -105,7 +105,7 @@ func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRe
 			},
 			"zone": schema.StringAttribute{
 				Optional:    true,
-				Description: "The selected availability zone to place the virtual machine. Zones need to be defined in topology of provider configuration. Selected node is locked in state after initial placement.",
+				Description: "The selected availability zone to place the virtual machine. Zones need to be defined in topology of provider configuration. Changing this forces a new placement.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
