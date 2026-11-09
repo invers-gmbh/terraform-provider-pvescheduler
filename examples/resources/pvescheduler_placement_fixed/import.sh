@@ -1,2 +1,2 @@
 # The import ID is the PVE node name to pin this placement to.
-terraform import pvescheduler_placement_fixed.vm pve01
+terraform import pvescheduler_placement_fixed.placement pve01

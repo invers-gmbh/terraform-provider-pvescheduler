@@ -1,7 +1,7 @@
 # pvescheduler_placement_dynamic picks the least-loaded node, optionally
 # restricted to one zone of the provider topology, and locks the result in
 # state. Changing zone, exclude or a weight replaces the resource.
-resource "pvescheduler_placement_dynamic" "vm" {
+resource "pvescheduler_placement_dynamic" "placement" {
   # Must be a key of the provider topology (optional).
   zone = "par-a"
 
@@ -24,7 +24,7 @@ resource "pvescheduler_placement_dynamic" "replica" {
 }
 
 output "chosen_node" {
-  value = pvescheduler_placement_dynamic.vm.node_name
+  value = pvescheduler_placement_dynamic.placement.node_name
 }
 
 output "replica_nodes" {
