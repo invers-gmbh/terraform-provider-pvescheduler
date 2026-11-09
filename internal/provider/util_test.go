@@ -182,3 +182,32 @@ func TestResolveWeights_UnknownFallsBack(t *testing.T) {
 		t.Errorf("expected cpu default 0.3, got %f", cpu)
 	}
 }
+
+func TestZoneOf(t *testing.T) {
+	topology := map[string][]string{
+		"foo": {"a", "b"},
+		"bar": {"b", "c"},
+	}
+
+	cases := []struct {
+		node string
+		want types.String
+	}{
+		{"a", types.StringValue("foo")},
+		{"c", types.StringValue("bar")},
+		{"b", types.StringNull()},
+		{"d", types.StringNull()},
+	}
+
+	for _, c := range cases {
+		if got := zoneOf(topology, c.node); !got.Equal(c.want) {
+			t.Errorf("zoneOf(%q): expected %v, got %v", c.node, c.want, got)
+		}
+	}
+}
+
+func TestZoneOf_NilTopology(t *testing.T) {
+	if got := zoneOf(nil, "a"); !got.IsNull() {
+		t.Errorf("expected null, got %v", got)
+	}
+}
