@@ -11,7 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
 var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
@@ -478,6 +480,11 @@ resource "pvescheduler_placement_fixed" "placement" {
   node_name = "pve01"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectKnownValue("pvescheduler_placement_fixed.placement", tfjsonpath.New("zone"), knownvalue.StringExact("a")),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("pvescheduler_placement_fixed.placement", "zone", "a"),
 			},
 			{
@@ -503,6 +510,38 @@ resource "pvescheduler_placement_fixed" "placement" {
 }
 `,
 				Check: resource.TestCheckNoResourceAttr("pvescheduler_placement_fixed.placement", "zone"),
+			},
+		},
+	})
+}
+
+func TestAccPlacementFixed_NodeChangeUpdatesZoneAtPlan(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_fixed" "placement" {
+	node_name = "pve01"
+}
+`,
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_fixed.placement", "zone", "a"),
+			},
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_fixed" "placement" {
+  node_name = "pve02"
+}
+`,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("pvescheduler_placement_fixed.placement", plancheck.ResourceActionReplace),
+						plancheck.ExpectKnownValue("pvescheduler_placement_fixed.placement", tfjsonpath.New("zone"), knownvalue.StringExact("b")),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_fixed.placement", "zone", "b"),
 			},
 		},
 	})

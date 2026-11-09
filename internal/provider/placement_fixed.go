@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
@@ -15,6 +16,7 @@ import (
 )
 
 var _ resource.ResourceWithImportState = &PlacementResourceFixed{}
+var _ resource.ResourceWithModifyPlan = &PlacementResourceFixed{}
 
 type PlacementResourceFixed struct{ client *PveClient }
 
@@ -168,4 +170,18 @@ func (r *PlacementResourceFixed) ImportState(ctx context.Context, req resource.I
 
 func (r *PlacementResourceFixed) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	// no-op: placement is a logical decision with no PVE-side resource to clean up
+}
+
+func (r *PlacementResourceFixed) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || !req.State.Raw.IsNull() || r.client == nil {
+		return
+	}
+
+	var nodeName types.String
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("node_name"), &nodeName)...)
+	if resp.Diagnostics.HasError() || nodeName.IsNull() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("zone"), zoneOf(r.client.Topology, nodeName.ValueString()))...)
 }
