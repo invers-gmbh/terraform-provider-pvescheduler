@@ -463,3 +463,70 @@ resource "pvescheduler_placement_fixed" "vm" {
 		},
 	})
 }
+
+func TestAccPlacmentDynamic_RespectsZone(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_dynamic" "vm" {
+	zone = "a"
+}
+`,
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.vm", "node_name", "pve03"),
+			},
+		},
+	})
+}
+
+func TestAccPlacementDynamic_UnknownZoneFails(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+						resource "pvescheduler_placement_dynamic" "vm" {
+							zone = "z"
+						}
+					`,
+				ExpectError: regexpBuildAllowlist,
+			},
+		},
+	})
+}
+
+func TestAccPlacementDynamic_ZoneChangeForcesReplacement(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+						resource "pvescheduler_placement_dynamic" "vm" {
+							zone = "a"
+						}
+					`,
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.vm", "node_name", "pve03"),
+			},
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+						resource "pvescheduler_placement_dynamic" "vm" {
+							zone = "b"
+						}
+					`,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("pvescheduler_placement_dynamic.vm", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.vm", "node_name", "pve02"),
+			},
+		},
+	})
+}
