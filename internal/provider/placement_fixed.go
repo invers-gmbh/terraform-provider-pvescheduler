@@ -23,6 +23,7 @@ type PlacementResourceFixedModel struct {
 	NodeName    types.String  `tfsdk:"node_name"`
 	MemUsagePct types.Float64 `tfsdk:"memory_usage_pct"`
 	CpuUsagePct types.Float64 `tfsdk:"cpu_usage_pct"`
+	Zone        types.String  `tfsdk:"zone"`
 }
 
 func NewPlacementResourceFixed() resource.Resource {
@@ -64,6 +65,13 @@ func (r *PlacementResourceFixed) Schema(_ context.Context, _ resource.SchemaRequ
 					float64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"zone": schema.StringAttribute{
+				Computed:    true,
+				Description: "The zone of `node_name` in the provider topology at time of placement, or null if the node is in no zone or in more than one.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 	}
 }
@@ -95,12 +103,13 @@ func (r *PlacementResourceFixed) lookupNode(name string, diags *diag.Diagnostics
 	return nil
 }
 
-func fixedPlacementState(n *PveNode) PlacementResourceFixedModel {
+func fixedPlacementState(n *PveNode, topology map[string][]string) PlacementResourceFixedModel {
 	state := PlacementResourceFixedModel{
 		ID:          types.StringValue(n.Node),
 		NodeName:    types.StringValue(n.Node),
 		MemUsagePct: types.Float64Null(),
 		CpuUsagePct: types.Float64Value(n.Cpu * 100),
+		Zone:        zoneOf(topology, n.Node),
 	}
 	if n.MaxMem > 0 {
 		state.MemUsagePct = types.Float64Value((n.Mem / n.MaxMem) * 100)
@@ -120,7 +129,7 @@ func (r *PlacementResourceFixed) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	state := fixedPlacementState(node)
+	state := fixedPlacementState(node, r.client.Topology)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -153,7 +162,7 @@ func (r *PlacementResourceFixed) ImportState(ctx context.Context, req resource.I
 		return
 	}
 
-	state := fixedPlacementState(node)
+	state := fixedPlacementState(node, r.client.Topology)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
