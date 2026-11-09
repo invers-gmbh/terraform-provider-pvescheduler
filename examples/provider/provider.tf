@@ -9,4 +9,12 @@ provider "pvescheduler" {
   # Global allowlist of nodes eligible for scheduling (optional).
   # If omitted, all online nodes are considered.
   nodes = ["pve01", "pve02", "pve03"]
+
+  # Zones for pvescheduler_placement_dynamic (optional). Each key is a zone
+  # name, each value the PVE nodes in that zone.
+  topology = {
+    "par-a" = ["pve01"]
+    "par-b" = ["pve02"]
+    "par-c" = ["pve03"]
+  }
 }
