@@ -53,7 +53,7 @@ resource "pvescheduler_placement" "vm" {
 - Terraform >= 1.0
 
 **Development**
-- Go 1.26.6
+- Go 1.26.10
 
 ## Scoring
 
