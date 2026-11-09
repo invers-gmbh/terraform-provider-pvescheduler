@@ -22,6 +22,7 @@ var (
 	regexpUnsupportedArgument   = regexp.MustCompile(`Unsupported argument`)
 	regexpNodeNotFound          = regexp.MustCompile(`node not found`)
 	regexpInvalidAttributeValue = regexp.MustCompile(`Invalid Attribute Value`)
+	regexpBuildAllowlist        = regexp.MustCompile(`failed to build node allowlist`)
 	// Wrapped across lines by Terraform's diagnostic renderer, so match one word.
 	regexpCertificate = regexp.MustCompile(`certificate`)
 )
@@ -377,6 +378,87 @@ func TestAccProvider_EnvironmentEnablesInsecureWhenUnset(t *testing.T) {
 data "pvescheduler_node" "best" {}
 `,
 				Check: resource.TestCheckResourceAttr("data.pvescheduler_node.best", "node_name", "pve02"),
+			},
+		},
+	})
+}
+
+const testAccTopology = `topology = {
+    a = ["pve01", "pve03"]
+    b = ["pve02"]
+  }`
+
+func TestAccPlacementFixed_PinsNode(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_fixed" "vm" {
+  node_name = "pve01"
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("pvescheduler_placement_fixed.vm", "node_name", "pve01"),
+					resource.TestCheckResourceAttr("pvescheduler_placement_fixed.vm", "memory_usage_pct", "75"),
+					resource.TestCheckResourceAttr("pvescheduler_placement_fixed.vm", "cpu_usage_pct", "75"),
+				),
+			},
+			{
+				ResourceName:      "pvescheduler_placement_fixed.vm",
+				ImportState:       true,
+				ImportStateId:     "pve01",
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccPlacementFixed_UnknownNodeFails(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_fixed" "vm" {
+  node_name = "pve99"
+}
+`,
+				ExpectError: regexpNodeNotFound,
+			},
+		},
+	})
+}
+
+func TestAccPlacementFixed_NodeChangeForcesReplacement(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_fixed" "vm" {
+  node_name = "pve01"
+}
+`,
+			},
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_fixed" "vm" {
+  node_name = "pve03"
+}
+`,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("pvescheduler_placement_fixed.vm", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_fixed.vm", "node_name", "pve03"),
 			},
 		},
 	})
