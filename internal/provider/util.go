@@ -67,6 +67,19 @@ func buildAllowlist(nodes []string, topology map[string][]string, zone string) (
 	return allowlist, nil
 }
 
+func zoneOf(topology map[string][]string, node string) types.String {
+	var found []string
+	for zone, members := range topology {
+		if slices.Contains(members, node) {
+			found = append(found, zone)
+		}
+	}
+	if len(found) != 1 {
+		return types.StringNull()
+	}
+	return types.StringValue(found[0])
+}
+
 func resolveWeights(memWeight, cpuWeight types.Float64) (float64, float64) {
 	mem, cpu := defaultMemWeight, defaultCpuWeight
 	if !memWeight.IsNull() && !memWeight.IsUnknown() {

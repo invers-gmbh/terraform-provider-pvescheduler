@@ -105,8 +105,10 @@ func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRe
 			},
 			"zone": schema.StringAttribute{
 				Optional:    true,
+				Computed:    true,
 				Description: "The selected availability zone to place the virtual machine. Zones need to be defined in topology of provider configuration. Changing this forces a new placement.",
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
@@ -162,6 +164,10 @@ func (r *PlacementDynamicResource) Create(ctx context.Context, req resource.Crea
 	plan.NodeName = types.StringValue(best.Node)
 	plan.MemUsagePct = types.Float64Value((best.Mem / best.MaxMem) * 100)
 	plan.CpuUsagePct = types.Float64Value(best.Cpu * 100)
+
+	if plan.Zone.IsUnknown() {
+		plan.Zone = zoneOf(r.client.Topology, best.Node)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -220,6 +226,7 @@ func (r *PlacementDynamicResource) ImportState(ctx context.Context, req resource
 		CpuWeight:   types.Float64Value(defaultCpuWeight),
 		MemUsagePct: types.Float64Null(),
 		CpuUsagePct: types.Float64Value(found.Cpu * 100),
+		Zone:        zoneOf(r.client.Topology, found.Node),
 	}
 	if found.MaxMem > 0 {
 		state.MemUsagePct = types.Float64Value((found.Mem / found.MaxMem) * 100)
