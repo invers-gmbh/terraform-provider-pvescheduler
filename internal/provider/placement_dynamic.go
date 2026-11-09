@@ -42,7 +42,7 @@ func (r *PlacementDynamicResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.",
+		Description: "Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `zone`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
@@ -105,10 +105,9 @@ func (r *PlacementDynamicResource) Schema(_ context.Context, _ resource.SchemaRe
 			},
 			"zone": schema.StringAttribute{
 				Optional:    true,
-				Computed:    false,
 				Description: "The selected availability zone to place the virtual machine. Zones need to be defined in topology of provider configuration. Selected node is locked in state after initial placement.",
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 		},
