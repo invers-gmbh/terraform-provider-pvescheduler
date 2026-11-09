@@ -388,6 +388,8 @@ const testAccTopology = `topology = {
     b = ["pve02"]
   }`
 
+// fixed
+
 func TestAccPlacementFixed_PinsNode(t *testing.T) {
 	endpoint := testAccStubPVE(t)
 
@@ -463,6 +465,50 @@ resource "pvescheduler_placement_fixed" "vm" {
 		},
 	})
 }
+
+func TestAccPlacementFixed_ExportsZone(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_fixed" "placement" {
+  node_name = "pve01"
+}
+`,
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_fixed.placement", "zone", "a"),
+			},
+			{
+				ResourceName:      "pvescheduler_placement_fixed.placement",
+				ImportState:       true,
+				ImportStateId:     "pve01",
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccPlacementFixed_ZoneNullWithoutTopology(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_fixed" "placement" {
+  node_name = "pve01"
+}
+`,
+				Check: resource.TestCheckNoResourceAttr("pvescheduler_placement_fixed.placement", "zone"),
+			},
+		},
+	})
+}
+
+// dynamic
 
 func TestAccPlacmentDynamic_RespectsZone(t *testing.T) {
 	endpoint := testAccStubPVE(t)
