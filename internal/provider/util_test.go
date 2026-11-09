@@ -99,6 +99,60 @@ func TestBuildAllowlist_NoEligibleNodes(t *testing.T) {
 	}
 }
 
+func TestBuildAllowlist_UnknownZone(t *testing.T) {
+	nodes := []string{"a", "b", "c"}
+	zones := map[string][]string{
+		"foo": {"a"},
+	}
+	zone := "bar"
+
+	allowlist, err := buildAllowlist(nodes, zones, zone)
+
+	if err == nil {
+		t.Fatalf("expected error, got allowlist: %v", allowlist)
+	}
+}
+
+func TestBuildAllowlist_NoGlobalAllowlist(t *testing.T) {
+	zones := map[string][]string{
+		"foo": {"a", "b"},
+		"bar": {"c"},
+	}
+	zone := "foo"
+
+	allowlist, err := buildAllowlist(nil, zones, zone)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []string{"a", "b"}
+	got := slices.Sorted(maps.Keys(allowlist))
+	if !slices.Equal(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestBuildAllowlist_PartialIntersection(t *testing.T) {
+	nodes := []string{"a", "b"}
+	zones := map[string][]string{
+		"foo": {"a", "c"},
+	}
+	zone := "foo"
+
+	allowlist, err := buildAllowlist(nodes, zones, zone)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []string{"a"}
+	got := slices.Sorted(maps.Keys(allowlist))
+	if !slices.Equal(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
 func TestResolveWeights_Defaults(t *testing.T) {
 	mem, cpu := resolveWeights(types.Float64Null(), types.Float64Null())
 	if mem != 0.7 {
