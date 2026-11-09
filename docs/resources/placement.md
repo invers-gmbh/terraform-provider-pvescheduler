@@ -3,12 +3,12 @@
 page_title: "pvescheduler_placement Resource - pvescheduler"
 subcategory: ""
 description: |-
-  Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing exclude, memory_weight or cpu_weight replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
+  Deprecated: use pvescheduler_placement_dynamic or pvescheduler_placement_fixed instead. Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing exclude, memory_weight or cpu_weight replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
 ---
 
 # pvescheduler_placement (Resource)
 
-Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
+Deprecated: use `pvescheduler_placement_dynamic` or `pvescheduler_placement_fixed` instead. Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.
 
 ## Example Usage
 
@@ -16,10 +16,10 @@ Selects and locks a Proxmox node for VM placement. The chosen node is stored in 
 # pvescheduler_placement picks the least-loaded node once and locks the result
 # in state, so VMs do not move on subsequent applies. To re-run node selection:
 #
-#   terraform state rm pvescheduler_placement.vm
+#   terraform state rm pvescheduler_placement.placement
 #
 # Scheduling is restricted to the provider block's nodes allowlist, if set.
-resource "pvescheduler_placement" "vm" {
+resource "pvescheduler_placement" "placement" {
   # Exclude nodes that are reserved or under maintenance (optional).
   exclude = ["pve-storage-01"]
 
@@ -30,18 +30,18 @@ resource "pvescheduler_placement" "vm" {
 
 # Feed the decision into your VM resource, for example:
 #
-#   node_name = pvescheduler_placement.vm.node_name
+#   node_name = pvescheduler_placement.placement.node_name
 #
 output "chosen_node" {
-  value = pvescheduler_placement.vm.node_name
+  value = pvescheduler_placement.placement.node_name
 }
 
 output "chosen_node_memory_pct" {
-  value = pvescheduler_placement.vm.memory_usage_pct
+  value = pvescheduler_placement.placement.memory_usage_pct
 }
 
 output "chosen_node_cpu_pct" {
-  value = pvescheduler_placement.vm.cpu_usage_pct
+  value = pvescheduler_placement.placement.cpu_usage_pct
 }
 ```
 
@@ -69,5 +69,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 # The import ID is the PVE node name to pin this placement to.
-terraform import pvescheduler_placement.vm pve01
+terraform import pvescheduler_placement.placement pve01
 ```

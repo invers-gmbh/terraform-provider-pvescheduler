@@ -16,16 +16,16 @@ Pins VM placement to one explicitly named Proxmox node. The node must exist in t
 # pvescheduler_placement_fixed pins a VM to one explicitly named node. No
 # scoring happens; the node only has to exist in the cluster at creation time.
 # Changing node_name replaces the resource.
-resource "pvescheduler_placement_fixed" "vm" {
+resource "pvescheduler_placement_fixed" "placement" {
   node_name = "pve01"
 }
 
 # Feed the decision into your VM resource, for example:
 #
-#   node_name = pvescheduler_placement_fixed.vm.node_name
+#   node_name = pvescheduler_placement_fixed.placement.node_name
 #
 output "pinned_node" {
-  value = pvescheduler_placement_fixed.vm.node_name
+  value = pvescheduler_placement_fixed.placement.node_name
 }
 ```
 
@@ -50,5 +50,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 # The import ID is the PVE node name to pin this placement to.
-terraform import pvescheduler_placement_fixed.vm pve01
+terraform import pvescheduler_placement_fixed.placement pve01
 ```

@@ -16,7 +16,7 @@ Selects and locks a Proxmox node for VM placement. The chosen node is stored in 
 # pvescheduler_placement_dynamic picks the least-loaded node, optionally
 # restricted to one zone of the provider topology, and locks the result in
 # state. Changing zone, exclude or a weight replaces the resource.
-resource "pvescheduler_placement_dynamic" "vm" {
+resource "pvescheduler_placement_dynamic" "placement" {
   # Must be a key of the provider topology (optional).
   zone = "par-a"
 
@@ -39,7 +39,7 @@ resource "pvescheduler_placement_dynamic" "replica" {
 }
 
 output "chosen_node" {
-  value = pvescheduler_placement_dynamic.vm.node_name
+  value = pvescheduler_placement_dynamic.placement.node_name
 }
 
 output "replica_nodes" {
@@ -73,5 +73,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 ```shell
 # The import ID is the PVE node name to pin this placement to. zone is not
 # set on import, so importing into a config that sets zone plans a replacement.
-terraform import pvescheduler_placement_dynamic.vm pve01
+terraform import pvescheduler_placement_dynamic.placement pve01
 ```
