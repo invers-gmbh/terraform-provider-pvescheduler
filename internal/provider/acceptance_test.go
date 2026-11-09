@@ -530,3 +530,76 @@ func TestAccPlacementDynamic_ZoneChangeForcesReplacement(t *testing.T) {
 		},
 	})
 }
+
+func TestAccPlacementDynamic_ComputesZoneWhenUnset(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_dynamic" "placement" {}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.placement", "node_name", "pve02"),
+					resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.placement", "zone", "b"),
+				),
+			},
+			{
+				ResourceName:      "pvescheduler_placement_dynamic.placement",
+				ImportState:       true,
+				ImportStateId:     "pve02",
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccPlacementDynamic_ZoneNullWithoutTopology(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, "") + `
+resource "pvescheduler_placement_dynamic" "placement" {}
+`,
+				Check: resource.TestCheckNoResourceAttr("pvescheduler_placement_dynamic.placement", "zone"),
+			},
+		},
+	})
+}
+
+func TestAccPlacementDynamic_RemovingZoneKeepsPlacement(t *testing.T) {
+	endpoint := testAccStubPVE(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_dynamic" "placement" {
+  zone = "a"
+}
+`,
+				Check: resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.placement", "node_name", "pve03"),
+			},
+			{
+				Config: testAccProviderBlock(endpoint, testAccTopology) + `
+resource "pvescheduler_placement_dynamic" "placement" {}
+`,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("pvescheduler_placement_dynamic.placement", plancheck.ResourceActionNoop),
+					},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.placement", "node_name", "pve03"),
+					resource.TestCheckResourceAttr("pvescheduler_placement_dynamic.placement", "zone", "a"),
+				),
+			},
+		},
+	})
+}
