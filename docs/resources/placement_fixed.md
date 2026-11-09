@@ -41,6 +41,7 @@ output "pinned_node" {
 - `cpu_usage_pct` (Number) CPU utilization of the node at time of placement, as a percentage (0-100).
 - `id` (String) The ID of this resource.
 - `memory_usage_pct` (Number) Memory utilization of the node at time of placement, as a percentage (0-100).
+- `zone` (String) The zone of `node_name` in the provider topology at time of placement, or null if the node is in no zone or in more than one.
 
 ## Import
 
