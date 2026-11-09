@@ -1,10 +1,10 @@
 # pvescheduler_placement picks the least-loaded node once and locks the result
 # in state, so VMs do not move on subsequent applies. To re-run node selection:
 #
-#   terraform state rm pvescheduler_placement.vm
+#   terraform state rm pvescheduler_placement.placement
 #
 # Scheduling is restricted to the provider block's nodes allowlist, if set.
-resource "pvescheduler_placement" "vm" {
+resource "pvescheduler_placement" "placement" {
   # Exclude nodes that are reserved or under maintenance (optional).
   exclude = ["pve-storage-01"]
 
@@ -15,16 +15,16 @@ resource "pvescheduler_placement" "vm" {
 
 # Feed the decision into your VM resource, for example:
 #
-#   node_name = pvescheduler_placement.vm.node_name
+#   node_name = pvescheduler_placement.placement.node_name
 #
 output "chosen_node" {
-  value = pvescheduler_placement.vm.node_name
+  value = pvescheduler_placement.placement.node_name
 }
 
 output "chosen_node_memory_pct" {
-  value = pvescheduler_placement.vm.memory_usage_pct
+  value = pvescheduler_placement.placement.memory_usage_pct
 }
 
 output "chosen_node_cpu_pct" {
-  value = pvescheduler_placement.vm.cpu_usage_pct
+  value = pvescheduler_placement.placement.cpu_usage_pct
 }

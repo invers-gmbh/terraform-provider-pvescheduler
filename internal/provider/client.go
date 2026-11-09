@@ -16,6 +16,7 @@ type PveClient struct {
 	Endpoint           string
 	InsecureSkipVerify bool
 	Nodes              []string
+	Topology           map[string][]string
 
 	http      *http.Client
 	apiToken  string
@@ -42,17 +43,18 @@ type PveNode struct {
 	Cpu    float64 `json:"cpu"`
 }
 
-func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string) *PveClient {
+func NewClientWithToken(endpoint, apiToken string, insecure bool, nodes []string, topology map[string][]string) *PveClient {
 	return &PveClient{
 		Endpoint:           endpoint,
 		Nodes:              nodes,
 		apiToken:           apiToken,
 		InsecureSkipVerify: insecure,
 		http:               newHTTPClient(insecure),
+		Topology:           topology,
 	}
 }
 
-func NewClientWithPassword(endpoint, username, password string, insecure bool, nodes []string) (*PveClient, error) {
+func NewClientWithPassword(endpoint, username, password string, insecure bool, nodes []string, topology map[string][]string) (*PveClient, error) {
 	c := &PveClient{
 		Endpoint:           endpoint,
 		InsecureSkipVerify: insecure,
@@ -60,6 +62,7 @@ func NewClientWithPassword(endpoint, username, password string, insecure bool, n
 		http:               newHTTPClient(insecure),
 		username:           username,
 		password:           password,
+		Topology:           topology,
 	}
 
 	if err := c.authenticate(); err != nil {

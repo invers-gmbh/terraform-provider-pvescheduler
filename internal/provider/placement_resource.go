@@ -41,7 +41,8 @@ func (r *PlacementResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *PlacementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.",
+		Description:        "Deprecated: use `pvescheduler_placement_dynamic` or `pvescheduler_placement_fixed` instead. Selects and locks a Proxmox node for VM placement. The chosen node is stored in state and not re-evaluated on subsequent applies. Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource and re-runs selection. Remove from state to force re-scheduling without a configuration change.",
+		DeprecationMessage: "Use pvescheduler_placement_dynamic or pvescheduler_placement_fixed instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,

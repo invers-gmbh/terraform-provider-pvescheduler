@@ -30,6 +30,58 @@ See the [Terraform Registry listing](https://registry.terraform.io/providers/inv
 
 ## Example
 
+### Dynamic Placement
+
+```hcl
+provider "pvescheduler" {
+  # Falls back to PROXMOX_VE_ENDPOINT and PROXMOX_VE_API_TOKEN env vars.
+  nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
+  topology = {
+    "zoneA" = [
+      "pve01"
+    ],
+    "zoneB" = [
+      "pve02"
+    ],
+    "zoneC" = [
+      "pve03"
+    ],
+  }
+
+  #exclude       = ["pve01"]
+  #memory_weight = 0.7 # default
+  #cpu_weight    = 0.3 # default
+}
+
+resource "pvescheduler_placement_dynamic" "placement" {
+  zone = "zoneA"
+}
+
+# Use the selected node in your proxmox VM resource:
+# For the given example node_name will be pve01.
+# node_name = pvescheduler_placement_dynamic.placement.node_name
+```
+
+### Fixed Placement
+
+```hcl
+provider "pvescheduler" {
+  # Falls back to PROXMOX_VE_ENDPOINT and PROXMOX_VE_API_TOKEN env vars.
+  nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
+}
+
+resource "pvescheduler_placement_fixed" "placement" {
+  node_name = "pve01"
+}
+
+# Use the selected node in your proxmox VM resource:
+# node_name = pvescheduler_placement_fixed.placement.node_name
+```
+
+### Deprecation
+
+The `pvescheduler_placement` is still available and supported, but it is marked as obsolete and will be removed in the future.
+
 ```hcl
 provider "pvescheduler" {
   # Falls back to PROXMOX_VE_ENDPOINT and PROXMOX_VE_API_TOKEN env vars.
@@ -53,7 +105,7 @@ resource "pvescheduler_placement" "vm" {
 - Terraform >= 1.0
 
 **Development**
-- Go 1.26.6
+- Go 1.26.10
 
 ## Scoring
 
