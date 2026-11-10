@@ -139,6 +139,7 @@ func (r *PlacementResourceFixed) Create(ctx context.Context, req resource.Create
 func (r *PlacementResourceFixed) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state PlacementResourceFixedModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resolvePendingZone(ctx, r.client, state.NodeName, &state.Zone, resp.Private, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 

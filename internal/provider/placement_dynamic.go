@@ -177,6 +177,7 @@ func (r *PlacementDynamicResource) Create(ctx context.Context, req resource.Crea
 func (r *PlacementDynamicResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state PlacementDynamicResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resolvePendingZone(ctx, r.client, state.NodeName, &state.Zone, resp.Private, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
