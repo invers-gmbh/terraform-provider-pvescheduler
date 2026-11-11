@@ -2,14 +2,16 @@
 
 Selects the least-loaded Proxmox VE node for VM placement based on weighted CPU and memory utilization. The selected node is locked in Terraform state after the first apply so VMs don't move on subsequent runs.
 
-Changing `exclude`, `memory_weight` or `cpu_weight` replaces the resource, which re-runs selection and may move the VM. To force re-scheduling without a configuration change, remove the resource from state:
+Changing any variable (aka. `exclude`, `memory_weight` or `cpu_weight`) on a placement replaces the resource, which re-runs selection and may move the VM to another node. To force re-placement without a configuration change, remove the resource from state:
 
 ```bash
-terraform state rm pvescheduler_placement.vm
+terraform state rm pvescheduler_placement_dynamic.placement # dynamic placement
+
+terraform state rm pvescheduler_placement_fixed.placement # fixed placement
 ```
 
 > [!WARNING]
-> Disclaimer: This provider is being developed for internal use and we decided to open-source it. Be aware that this only is a best effort of implementing automatic node-placement for PVE in Terraform and NOT a load-balancer.
+> Disclaimer: This provider is being developed for internal use and we decided to open-source it. Be aware that this only is a best effort of implementing automatic node-placement for PVE in Terraform and NOT a loadbalancer.
 >
 > Placement decisions within a single apply are independent of one another. Every instance queries the cluster and sees the same pre-apply metrics, so a `count`-ed batch will all land on the same node. Load only shifts once the VMs boot, which is after this provider has decided. Create batches in separate applies, or set `exclude` per instance, if you need them spread.
 
