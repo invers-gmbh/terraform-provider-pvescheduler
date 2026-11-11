@@ -37,7 +37,7 @@ See the [Terraform Registry listing](https://registry.terraform.io/providers/inv
 ```hcl
 provider "pvescheduler" {
   # Falls back to PROXMOX_VE_ENDPOINT and PROXMOX_VE_API_TOKEN env vars.
-  nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
+  
   topology = {
     "zoneA" = [
       "pve01"
@@ -50,6 +50,7 @@ provider "pvescheduler" {
     ],
   }
 
+  #nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
   #exclude       = ["pve01"]
   #memory_weight = 0.7 # default
   #cpu_weight    = 0.3 # default
@@ -69,7 +70,7 @@ resource "pvescheduler_placement_dynamic" "placement" {
 ```hcl
 provider "pvescheduler" {
   # Falls back to PROXMOX_VE_ENDPOINT and PROXMOX_VE_API_TOKEN env vars.
-  nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
+  # nodes = ["pve01", "pve02", "pve03"] # optional global allowlist
 }
 
 resource "pvescheduler_placement_fixed" "placement" {
